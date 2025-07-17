@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8" />
-  <title>Маршрут з автоматичним визначенням геолокації</title>
+  <title>Маршрут з геолокацією</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
@@ -18,7 +18,7 @@
 <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
 
 <script>
-  // Функція для отримання параметру з URL
+  // Отримання параметра з URL
   function getQueryParam(name) {
     const params = new URLSearchParams(window.location.search);
     return params.get(name);
@@ -31,12 +31,12 @@
            !isNaN(coords[0]) && !isNaN(coords[1]);
   }
 
-  // Перевірка чи координати не 0,0
+  // Перевірка, чи координати дорівнюють 0,0
   function isZeroCoords(coords) {
     return coords && coords.length === 2 && coords[0] === 0 && coords[1] === 0;
   }
 
-  // Функція ініціалізації карти і маршруту
+  // Ініціалізація карти
   function initMap(startCoords) {
     const map = L.map('map').setView(startCoords, 13);
 
@@ -46,6 +46,7 @@
 
     L.marker(startCoords).addTo(map).bindPopup("Ваше місцезнаходження").openPopup();
 
+    // Обробка координат to
     const toRaw = getQueryParam('to');
     let toCoords = toRaw ? toRaw.split(',').map(Number) : null;
     if (!isValidCoords(toCoords) || isZeroCoords(toCoords)) toCoords = null;
@@ -56,7 +57,7 @@
         L.Routing.waypoint(startCoords),
         L.Routing.waypoint(toCoords)
       ], (err, routes) => {
-        if (err) {
+        if (err || routes.length === 0) {
           console.warn('Не вдалося побудувати маршрут');
           return;
         }
@@ -68,38 +69,31 @@
     }
   }
 
-  // Основна логіка запуску карти
+  // Основна логіка
   (function() {
     const fromRaw = getQueryParam('from');
     let fromCoords = fromRaw ? fromRaw.split(',').map(Number) : null;
 
-    // Якщо координати некоректні або 0,0 - замінюємо на null
+    // Якщо координати некоректні або 0,0 — отримати геолокацію
     if (!isValidCoords(fromCoords) || isZeroCoords(fromCoords)) {
-      fromCoords = null;
-    }
-
-    // Якщо fromCoords null - пробуємо отримати геолокацію браузера
-    if (!fromCoords) {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           pos => {
             initMap([pos.coords.latitude, pos.coords.longitude]);
           },
           err => {
-            // Якщо геолокація не працює - показуємо Київ
-            initMap([50.45, 30.52]);
+            console.warn('Геолокацію не дозволено, використовується Київ');
+            initMap([50.45, 30.52]); // fallback
           }
         );
       } else {
-        // Геолокація не підтримується - показуємо Київ
+        console.warn('Геолокація не підтримується, використовується Київ');
         initMap([50.45, 30.52]);
       }
     } else {
-      // Якщо fromCoords валідні - показуємо їх
       initMap(fromCoords);
     }
   })();
-
 </script>
 
 </body>
