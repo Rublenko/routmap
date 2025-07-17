@@ -41,7 +41,7 @@
     }).addTo(map);
 
     if (fromCoords && to) {
-      L.Routing.control({
+      const routeControl = L.Routing.control({
         waypoints: [
           L.latLng(fromCoords[0], fromCoords[1]),
           L.latLng(to[0], to[1])
@@ -49,6 +49,13 @@
         routeWhileDragging: false,
         show: false
       }).addTo(map);
+
+      // Коли маршрут побудовано — підігнати межі карти
+      routeControl.on("routesfound", function(e) {
+        const route = e.routes[0];
+        const bounds = L.latLngBounds(route.coordinates);
+        map.fitBounds(bounds, { padding: [20, 20] });
+      });
     } else if (!to) {
       L.marker(fromCoords).addTo(map).bindPopup("Ваше місцезнаходження").openPopup();
     }
