@@ -5,7 +5,6 @@
   <title>Маршрут на мапі (Leaflet + OSRM)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Leaflet CSS -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -13,18 +12,18 @@
   <style>
     html, body { height: 100%; margin: 0; }
     #map { width: 100%; height: 100%; }
+    .leaflet-routing-container {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
 <div id="map"></div>
 
-<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<!-- OSRM Leaflet plugin -->
 <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
 
 <script>
-  // Функція для отримання параметрів з URL
   function getQueryParam(name) {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get(name);
@@ -47,11 +46,20 @@
           L.latLng(to[0], to[1])
         ],
         routeWhileDragging: false,
-        show: false,                // ховаємо панель з інструкціями
-        createMarker: () => null,   // без маркерів на маршруті
-        summaryTemplate: '',        // прибираємо підсумок під картою
-        showAlternatives: false     // без альтернативних маршрутів
+        show: false,
+        createMarker: () => null,
+        summaryTemplate: '',
+        showAlternatives: false
       }).addTo(map);
+
+      // Прибираємо popups у waypoint маркерів (на всяк випадок)
+      routeControl.on('routeselected', function() {
+        routeControl.getPlan().getWaypoints().forEach(function(wp) {
+          if (wp.marker) {
+            wp.marker.closePopup();
+          }
+        });
+      });
 
       routeControl.on("routesfound", function(e) {
         const route = e.routes[0];
