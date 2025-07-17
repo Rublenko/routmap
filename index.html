@@ -1,19 +1,13 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="uk">
 <head>
   <meta charset="UTF-8" />
-  <title>Маршрут на мапі (Leaflet + OSRM)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
+  <title>Маршрут без панелі (Leaflet + OSRM)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    html, body { height: 100%; margin: 0; }
-    #map { width: 100%; height: 100%; }
-    .leaflet-routing-container {
-      display: none !important;
+    html, body, #map {
+      height: 100%; margin: 0; padding: 0;
     }
   </style>
 </head>
@@ -33,36 +27,30 @@
   const to = getQueryParam("to")?.split(",").map(Number);
 
   function initMap(fromCoords) {
-    const map = L.map("map").setView(fromCoords || [50.45, 30.52], 10);
+    const map = L.map('map').setView(fromCoords || [50.45, 30.52], 10);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
     if (fromCoords && to) {
-      const routeControl = L.Routing.control({
-        waypoints: [
-          L.latLng(fromCoords[0], fromCoords[1]),
-          L.latLng(to[0], to[1])
-        ],
-        routeWhileDragging: false,
-        show: false,
-        createMarker: () => null,
-        summaryTemplate: '',
-        showAlternatives: false
-      }).addTo(map);
+      const router = L.Routing.osrmv1();
 
-      // Прибираємо popups у waypoint маркерів (на всяк випадок)
-      routeControl.on('routeselected', function() {
-        routeControl.getPlan().getWaypoints().forEach(function(wp) {
-          if (wp.marker) {
-            wp.marker.closePopup();
-          }
-        });
-      });
+      router.route([
+        L.Routing.waypoint(fromCoords),
+        L.Routing.waypoint(to)
+      ], function(err, routes) {
+        if (err) {
+          alert("Не вдалося побудувати маршрут");
+          return;
+        }
 
-      routeControl.on("routesfound", function(e) {
-        const route = e.routes[0];
+        const route = routes[0];
+
+        // Малюємо лінію маршруту
+        const line = L.Routing.line(route).addTo(map);
+
+        // Підганяємо межі карти під маршрут
         const bounds = L.latLngBounds(route.coordinates);
         map.fitBounds(bounds, { padding: [20, 20] });
       });
@@ -75,17 +63,13 @@
     initMap(fromParam);
   } else if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const current = [position.coords.latitude, position.coords.longitude];
-        initMap(current);
-      },
-      () => {
-        initMap([50.45, 30.52]);
-      }
+      position => initMap([position.coords.latitude, position.coords.longitude]),
+      () => initMap([50.45, 30.52])
     );
   } else {
     initMap([50.45, 30.52]);
   }
 </script>
+
 </body>
 </html>
