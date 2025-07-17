@@ -18,21 +18,21 @@
 <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
 
 <script>
-  // Парсимо параметр URL
   function getQueryParam(name) {
     const params = new URLSearchParams(window.location.search);
     return params.get(name);
   }
 
-  // Перевірка валідності координат (масив [lat, lon])
   function isValidCoords(coords) {
     return Array.isArray(coords) &&
            coords.length === 2 &&
-           !isNaN(coords[0]) && !isNaN(coords[1]) &&
-           !(coords[0] === 0 && coords[1] === 0);
+           !isNaN(coords[0]) && !isNaN(coords[1]);
   }
 
-  // Основна ініціалізація карти з початковими координатами
+  function isZeroCoords(coords) {
+    return coords && coords.length === 2 && coords[0] === 0 && coords[1] === 0;
+  }
+
   function initMap(startCoords) {
     const map = L.map('map').setView(startCoords, 13);
 
@@ -44,7 +44,7 @@
 
     const toRaw = getQueryParam('to');
     let toCoords = toRaw ? toRaw.split(',').map(Number) : null;
-    if (!isValidCoords(toCoords)) toCoords = null;
+    if (!isValidCoords(toCoords) || isZeroCoords(toCoords)) toCoords = null;
 
     if (toCoords) {
       const router = L.Routing.osrmv1();
@@ -53,7 +53,7 @@
         L.Routing.waypoint(toCoords)
       ], (err, routes) => {
         if (err) {
-          alert('Не вдалося побудувати маршрут');
+          console.warn('Не вдалося побудувати маршрут');
           return;
         }
         const route = routes[0];
@@ -64,32 +64,28 @@
     }
   }
 
-  // Основна логіка
   (function() {
     const fromRaw = getQueryParam('from');
     let fromCoords = fromRaw ? fromRaw.split(',').map(Number) : null;
 
-    if (!isValidCoords(fromCoords)) {
-      // Якщо from не валідний - пробуємо геолокацію браузера
+    function proceed(coords) {
+      initMap(coords);
+    }
+
+    if (!isValidCoords(fromCoords) || isZeroCoords(fromCoords)) {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
-          pos => {
-            initMap([pos.coords.latitude, pos.coords.longitude]);
-          },
-          err => {
-            // Помилка геолокації — ставимо Київ
-            initMap([50.45, 30.52]);
-          }
+          pos => proceed([pos.coords.latitude, pos.coords.longitude]),
+          () => proceed([50, 30])
         );
       } else {
-        // Геолокація не підтримується — Київ
-        initMap([50.45, 30.52]);
+        proceed([50.45, 30.52]);
       }
     } else {
-      // Використовуємо from з URL
-      initMap(fromCoords);
+      proceed(fromCoords);
     }
   })();
 </script>
+
 </body>
 </html>
