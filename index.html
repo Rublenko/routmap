@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="uk">
 <head>
   <meta charset="UTF-8" />
@@ -51,7 +51,7 @@
         createMarker: () => null
       }).addTo(map);
 
-      // Коли маршрут побудовано — підігнати межі карти
+      // Підігнати межі карти під маршрут (без опису)
       routeControl.on("routesfound", function(e) {
         const route = e.routes[0];
         const bounds = L.latLngBounds(route.coordinates);
@@ -70,13 +70,11 @@
         const current = [position.coords.latitude, position.coords.longitude];
         initMap(current);
       },
-      (error) => {
-        alert("Не вдалося визначити ваше місцезнаходження. Використовується Київ.");
+      () => {
         initMap([50.45, 30.52]);
       }
     );
   } else {
-    alert("Геолокація не підтримується. Використовується Київ.");
     initMap([50.45, 30.52]);
   }
 </script>
