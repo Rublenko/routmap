@@ -83,12 +83,12 @@
           },
           err => {
             console.warn('Геолокацію не дозволено, використовується Київ');
-            initMap([50.45, 30.52]); // fallback
+            initMap([0, 0]); // fallback
           }
         );
       } else {
         console.warn('Геолокація не підтримується, використовується Київ');
-        initMap([50.45, 30.52]);
+        initMap([0, 0]);
       }
     } else {
       initMap(fromCoords);
