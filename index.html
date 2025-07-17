@@ -2,8 +2,8 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8" />
-  <title>Маршрут без панелі (Leaflet + OSRM) з поточним місцезнаходженням</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Маршрут з автоматичним визначенням геолокації</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     html, body, #map {
@@ -18,59 +18,78 @@
 <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
 
 <script>
+  // Парсимо параметр URL
   function getQueryParam(name) {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(name);
+    const params = new URLSearchParams(window.location.search);
+    return params.get(name);
   }
 
-  const toParam = getQueryParam("to")?.split(",").map(Number);
+  // Перевірка валідності координат (масив [lat, lon])
+  function isValidCoords(coords) {
+    return Array.isArray(coords) &&
+           coords.length === 2 &&
+           !isNaN(coords[0]) && !isNaN(coords[1]) &&
+           !(coords[0] === 0 && coords[1] === 0);
+  }
 
-  function initMap(fromCoords) {
-    const map = L.map('map').setView(fromCoords, 13);
+  // Основна ініціалізація карти з початковими координатами
+  function initMap(startCoords) {
+    const map = L.map('map').setView(startCoords, 13);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    L.marker(fromCoords).addTo(map).bindPopup("Ваше місцезнаходження").openPopup();
+    L.marker(startCoords).addTo(map).bindPopup("Ваше місцезнаходження").openPopup();
 
-    if (toParam && toParam.length === 2) {
+    const toRaw = getQueryParam('to');
+    let toCoords = toRaw ? toRaw.split(',').map(Number) : null;
+    if (!isValidCoords(toCoords)) toCoords = null;
+
+    if (toCoords) {
       const router = L.Routing.osrmv1();
-
       router.route([
-        L.Routing.waypoint(fromCoords),
-        L.Routing.waypoint(toParam)
-      ], function(err, routes) {
+        L.Routing.waypoint(startCoords),
+        L.Routing.waypoint(toCoords)
+      ], (err, routes) => {
         if (err) {
-          alert("Не вдалося побудувати маршрут");
+          alert('Не вдалося побудувати маршрут');
           return;
         }
-
         const route = routes[0];
         L.Routing.line(route).addTo(map);
-
         const bounds = L.latLngBounds(route.coordinates);
-        map.fitBounds(bounds, { padding: [20, 20] });
+        map.fitBounds(bounds, {padding: [20, 20]});
       });
     }
   }
 
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const currentCoords = [position.coords.latitude, position.coords.longitude];
-        initMap(currentCoords);
-      },
-      () => {
-        // Якщо не вдалось отримати позицію - центруємо на Київ
+  // Основна логіка
+  (function() {
+    const fromRaw = getQueryParam('from');
+    let fromCoords = fromRaw ? fromRaw.split(',').map(Number) : null;
+
+    if (!isValidCoords(fromCoords)) {
+      // Якщо from не валідний - пробуємо геолокацію браузера
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            initMap([pos.coords.latitude, pos.coords.longitude]);
+          },
+          err => {
+            // Помилка геолокації — ставимо Київ
+            initMap([50.45, 30.52]);
+          }
+        );
+      } else {
+        // Геолокація не підтримується — Київ
         initMap([50.45, 30.52]);
       }
-    );
-  } else {
-    // Якщо геолокація не підтримується
-    initMap([50.45, 30.52]);
-  }
+    } else {
+      // Використовуємо from з URL
+      initMap(fromCoords);
+    }
+  })();
 </script>
-
 </body>
 </html>
