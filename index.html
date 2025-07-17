@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8" />
-  <title>Маршрут без панелі (Leaflet + OSRM)</title>
+  <title>Маршрут без панелі (Leaflet + OSRM) з поточним місцезнаходженням</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
@@ -23,22 +23,23 @@
     return urlParams.get(name);
   }
 
-  const fromParam = getQueryParam("from")?.split(",").map(Number);
-  const to = getQueryParam("to")?.split(",").map(Number);
+  const toParam = getQueryParam("to")?.split(",").map(Number);
 
   function initMap(fromCoords) {
-    const map = L.map('map').setView(fromCoords || [50.45, 30.52], 10);
+    const map = L.map('map').setView(fromCoords, 13);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
-    if (fromCoords && to) {
+    L.marker(fromCoords).addTo(map).bindPopup("Ваше місцезнаходження").openPopup();
+
+    if (toParam && toParam.length === 2) {
       const router = L.Routing.osrmv1();
 
       router.route([
         L.Routing.waypoint(fromCoords),
-        L.Routing.waypoint(to)
+        L.Routing.waypoint(toParam)
       ], function(err, routes) {
         if (err) {
           alert("Не вдалося побудувати маршрут");
@@ -46,27 +47,27 @@
         }
 
         const route = routes[0];
+        L.Routing.line(route).addTo(map);
 
-        // Малюємо лінію маршруту
-        const line = L.Routing.line(route).addTo(map);
-
-        // Підганяємо межі карти під маршрут
         const bounds = L.latLngBounds(route.coordinates);
         map.fitBounds(bounds, { padding: [20, 20] });
       });
-    } else if (!to) {
-      L.marker(fromCoords).addTo(map).bindPopup("Ваше місцезнаходження").openPopup();
     }
   }
 
-  if (fromParam) {
-    initMap(fromParam);
-  } else if (navigator.geolocation) {
+  if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
-      position => initMap([position.coords.latitude, position.coords.longitude]),
-      () => initMap([50.45, 30.52])
+      (position) => {
+        const currentCoords = [position.coords.latitude, position.coords.longitude];
+        initMap(currentCoords);
+      },
+      () => {
+        // Якщо не вдалось отримати позицію - центруємо на Київ
+        initMap([50.45, 30.52]);
+      }
     );
   } else {
+    // Якщо геолокація не підтримується
     initMap([50.45, 30.52]);
   }
 </script>
